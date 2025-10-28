@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Indicadores Macroeconômicos do Brasil</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="mast">
+      <div class="site">RPubs-style — Indicadores Macro BR</div>
+      <div class="meta">by <a href="#">Seu Nome</a> &middot; Last updated: 27 Oct 2025</div>
+    </div>
+  </div>
+
+  <main>
+    <article class="paper">
+      <h1 class="title">Indicadores Macroeconômicos do Brasil</h1>
+      <div class="byline">by <a href="#">Manoel A. Cardoso Calheiros</a> &middot; <span class="muted">Snapshot estático com fallback para dados em tempo real</span></div>
+
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="bcb.html">BCB</a>
+        <a href="focus.html">Focus</a>
+        <a href="ipeadata.html">IPEA</a>
+        <a href="sidra.html">SIDRA</a>
+        <a href="oecd.html">OECD/FMI/WB</a>
+      </nav>
+
+      <section class="content">
+        <p>Versão estática do modelo solicitado — gráficos e tabelas com opção de download. Quando a API local (<code>127.0.0.1:8000</code>) estiver rodando, os dados serão buscados em tempo real.</p>
+
+        <section class="grid">
+          <article>
+            <h3>SELIC (exemplo)</h3>
+            <canvas id="chart-selic" height="120"></canvas>
+            <p><a class="btn" href="#" id="download-selic">Baixar CSV</a></p>
+            <div class="table-preview" id="table-selic"></div>
+          </article>
+
+          <article>
+            <h3>IPCA (SIDRA) — exemplo</h3>
+            <canvas id="chart-ipca" height="120"></canvas>
+            <p><a class="btn" href="#" id="download-ipca">Baixar CSV</a></p>
+            <div class="table-preview" id="table-ipca"></div>
+          </article>
+        </section>
+
+        <p class="muted">Para conteúdo e relatórios em RMarkdown (com visualizações avançadas), use a pipeline R descrita no repositório.</p>
+      </section>
+
+      <footer>Created from APIs: BCB, SIDRA, IPEA, Focus, OECD, World Bank. CSVs geradas automaticamente via scripts.</footer>
+    </article>
+  </main>
+
+  <script src="js/charts.js"></script>
+</body>
+</html>
