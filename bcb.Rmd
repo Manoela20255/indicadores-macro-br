@@ -1,0 +1,39 @@
+---
+title: "BCB — Séries selecionadas"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+dir.create("data", showWarnings = FALSE)
+library(dplyr); library(tidyr); library(ggplot2); library(lubridate)
+```
+
+## Séries do BCB
+
+```{r bcb-data}
+dados_sgs <- tryCatch({
+  GetBCBData::gbcbd_get_series(
+    id = c("SELIC" = 432, "Dólar" = 3698, "IBC-Br" = 24363),
+    first.date = "2020-01-01",
+    last.date = Sys.Date(),
+    format.data = "wide"
+  )
+}, error = function(e) NULL)
+
+if(!is.null(dados_sgs)){
+  dados_sgs <- dados_sgs %>% tidyr::pivot_wider(id_cols = "ref.date", names_from = "series.name", values_from = "value")
+  readr::write_csv(dados_sgs, "data/bcb_series.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(dados_sgs, "data/bcb_series.xlsx")
+  knitr::kable(head(dados_sgs, 10))
+}
+```
+
+```{r plot}
+if(!is.null(dados_sgs)){
+  df <- dados_sgs %>% tidyr::pivot_longer(-ref.date, names_to = "serie", values_to = "valor")
+  ggplot(df, aes(x = ref.date, y = valor, color = serie)) + geom_line() + theme_minimal() + labs(title = "Séries do BCB")
+}
+```
+
+Download: [CSV](data/bcb_series.csv) | [XLSX](data/bcb_series.xlsx)

@@ -1,0 +1,60 @@
+Registered S3 method overwritten by 'tsibble':
+  method               from 
+  as_tibble.grouped_df dplyr
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+Attaching package: ‘tsibble’
+
+The following object is masked from ‘package:lubridate’:
+
+    interval
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, union
+
+Visit <https://db.nomics.world>.
+Starting API on http://127.0.0.1:8000 (api file: /Users/manoelacardosocalheiros/Downloads/_includes/Tentativa3/scripts/api_plumber.R)
+Running plumber API at http://127.0.0.1:8000
+Argument of class NULL cannot be used to set default value in OpenAPI Specifications.
+Argument of class NULL cannot be used to set default value in OpenAPI Specifications.
+Argument of class NULL cannot be used to set default value in OpenAPI Specifications.
+Argument of class NULL cannot be used to set default value in OpenAPI Specifications.
+Argument of class NULL cannot be used to set default value in OpenAPI Specifications.
+Running swagger Docs at http://127.0.0.1:8000/__docs__/
+ℹ using single call for small query
+ℹ Fetching id = 432 [id=432] | 2018-01-01 -> 2025-10-28
+✔ got data with 2858 rows and 4 columns
+ℹ 
+Warning: Unknown or uninitialised column: `error`.
+All others arguments are desconsidered when 'api' is informed
+Requesting Ipeadata API <http://www.ipeadata.gov.br/>
+  |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
+Warning: Unknown or uninitialised column: `error`.
+
+Could not load dataset  :  imf / ifs / NA 
+
+Could not load series  :  IMF / IFS / BRA.NGDP_R 
+Warning: Unknown or uninitialised column: `error`.
+Warning: Unknown or uninitialised column: `error`.
+
+Could not load dataset  :  imf / ifs / NA 
+
+Could not load series  :  IMF / IFS / BRA.NGDP_R 

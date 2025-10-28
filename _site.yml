@@ -1,0 +1,17 @@
+name: "Indicadores Macroeconômicos BR"
+output_dir: docs
+navbar:
+  title: "Indicadores Macro BR"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: "BCB"
+      href: bcb.html
+    - text: "Focus"
+      href: focus.html
+    - text: "IPEA"
+      href: ipeadata.html
+    - text: "SIDRA"
+      href: sidra.html
+    - text: "OECD / FMI / WB"
+      href: oecd_fmi_wb.html

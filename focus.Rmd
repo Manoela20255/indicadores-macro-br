@@ -1,0 +1,38 @@
+---
+title: "Focus — Expectativas"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+dir.create("data", showWarnings = FALSE)
+library(dplyr); library(tsibble); library(ggplot2)
+```
+
+## Expectativas (Focus) — IPCA
+
+```{r focus-data}
+dados_focus <- tryCatch({
+  rbcb::get_market_expectations(type = "annual", indic = "IPCA", start_date = "2020-01-01")
+}, error = function(e) NULL)
+
+if(!is.null(dados_focus)){
+  df_focus <- dados_focus %>%
+    dplyr::filter(baseCalculo == 0) %>%
+    dplyr::select(data = Data, data_ref = DataReferencia, mediana = Mediana) %>%
+    dplyr::group_by(data_ref, ano_mes = tsibble::yearmonth(data)) %>%
+    dplyr::summarise(expectativa_mensal = mean(mediana, na.rm = TRUE), .groups = "drop")
+
+  readr::write_csv(df_focus, "data/focus_ipca.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_focus, "data/focus_ipca.xlsx")
+  knitr::kable(head(df_focus, 10))
+}
+```
+
+```{r focus-plot}
+if(exists("df_focus")){
+  ggplot(df_focus, aes(x = ano_mes, y = expectativa_mensal)) + geom_line() + theme_minimal() + labs(title = "Expectativa IPCA (Focus)")
+}
+```
+
+Download: [CSV](data/focus_ipca.csv) | [XLSX](data/focus_ipca.xlsx)

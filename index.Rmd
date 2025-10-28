@@ -1,0 +1,392 @@
+---
+title: "Indicadores Macro BR — RPubs-style"
+author: "Manoel A. Cardoso Calheiros"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: false
+    theme: yeti
+    css: static_site/css/style.css
+    self_contained: false
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, cache = FALSE)
+library(GetBCBData)
+library(rbcb)
+library(ipeadatar)
+library(sidrar)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(lubridate)
+library(WDI)
+```
+
+<div class="topbar">
+  <div class="mast">
+    <div class="site">RPubs-style — Indicadores Macro BR</div>
+    <div class="meta">by <a href="#">`r params$author %||% "Manoel"`</a> &middot; Last updated: `r format(Sys.time(), "%d %b %Y %H:%M")`</div>
+  </div>
+</div>
+
+<article class="paper">
+  <h1 class="title">Indicadores Macroeconômicos do Brasil</h1>
+  <div class="byline">Séries históricas atualizáveis automaticamente via GitHub Actions / R</div>
+
+  ## SELIC (BCB)
+
+```{r selic-plot}
+# fetch SELIC series using GetBCBData (id 432) with fallback to existing CSV in docs/data/
+df_selic <- tryCatch(
+  GetBCBData::gbcbd_get_series(id = 432, first.date = "2000-01-01", last.date = Sys.Date()),
+  error = function(e) {
+    message('SELIC fetch error: ', e$message)
+    NULL
+  })
+if(!is.null(df_selic) && nrow(df_selic)>0){
+  df_selic <- df_selic %>% rename(date = ref.date, selic = value) %>% arrange(date)
+  p <- ggplot(df_selic, aes(x = date, y = selic)) + geom_line(color = '#2b7bd3') + theme_minimal() + labs(y = 'SELIC (%)', x = '')
+  print(p)
+  write_csv(df_selic, file = 'docs/data/selic.csv')
+} else if(file.exists('docs/data/selic.csv')){
+  df_selic <- readr::read_csv('docs/data/selic.csv', col_types = readr::cols())
+  df_selic <- df_selic %>% mutate(date = as.Date(date))
+  p <- ggplot(df_selic, aes(x = date, y = selic)) + geom_line(color = '#2b7bd3') + theme_minimal() + labs(y = 'SELIC (%)', x = '')
+  print(p)
+} else {
+  message('No SELIC data available (no API and no docs/data/selic.csv)')
+}
+```
+
+Download: [CSV da SELIC](data/selic.csv)
+
+## IPCA (SIDRA)
+
+```{r sidra-plot}
+cod_sidra <- "/t/7060/n1/all/v/63/p/all/c315/7169/d/v63%202"
+df_sidra <- tryCatch(sidrar::get_sidra(api = cod_sidra), error = function(e){ message('SIDRA error: ', e$message); NULL })
+if(!is.null(df_sidra) && nrow(df_sidra)>0){
+  df_sidra2 <- df_sidra %>% mutate(date = lubridate::ym(`Mês (Código)`), ipca = Valor) %>% select(date, ipca) %>% arrange(date)
+  p2 <- ggplot(df_sidra2, aes(x = date, y = ipca)) + geom_line(color = '#2bd36a') + theme_minimal() + labs(y = 'IPCA (var. %)', x = '')
+  print(p2)
+  write_csv(df_sidra2, file = 'docs/data/sidra_ipca.csv')
+} else if(file.exists('docs/data/sidra_ipca.csv')){
+  df_sidra2 <- readr::read_csv('docs/data/sidra_ipca.csv', col_types = readr::cols()) %>% mutate(date = lubridate::ym(date))
+  p2 <- ggplot(df_sidra2, aes(x = date, y = ipca)) + geom_line(color = '#2bd36a') + theme_minimal() + labs(y = 'IPCA (var. %)', x = '')
+  print(p2)
+} else {
+  message('No SIDRA data available')
+}
+```
+
+Download: [CSV IPCA (SIDRA)](data/sidra_ipca.csv)
+
+## Focus — Expectativa IPCA
+
+```{r focus-plot}
+df_focus <- tryCatch(rbcb::get_market_expectations(type = 'annual', indic = 'IPCA', start_date = '2010-01-01'), error = function(e){ message('Focus fetch error: ', e$message); NULL })
+if(!is.null(df_focus) && nrow(df_focus)>0){
+  df_focus2 <- df_focus %>% filter(baseCalculo == 0) %>% select(Data, DataReferencia, Mediana) %>% group_by(DataReferencia) %>% summarise(mediana = mean(Mediana, na.rm=TRUE)) %>% ungroup()
+  df_focus2 <- df_focus2 %>% mutate(date = as.Date(DataReferencia)) %>% arrange(date)
+  p3 <- ggplot(df_focus2, aes(x = date, y = mediana)) + geom_line(color = '#ff8c00') + theme_minimal() + labs(y = 'Expectativa IPCA (%)', x = '')
+  print(p3)
+  write_csv(df_focus2, file = 'docs/data/focus_ipca.csv')
+} else if(file.exists('docs/data/focus_ipca.csv')){
+  df_focus2 <- readr::read_csv('docs/data/focus_ipca.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date))
+  p3 <- ggplot(df_focus2, aes(x = date, y = mediana)) + geom_line(color = '#ff8c00') + theme_minimal() + labs(y = 'Expectativa IPCA (%)', x = '')
+  print(p3)
+} else {
+  message('No Focus data available')
+}
+```
+
+Download: [CSV Focus IPCA](data/focus_ipca.csv)
+
+## IPEA (exemplos)
+
+```{r ipea-plot}
+df_ipea <- tryCatch(ipeadatar::ipeadata(c('CAGED12_SALDON12' = 'CAGED12_SALDON12')), error = function(e){ message('IPEA error: ', e$message); NULL })
+if(!is.null(df_ipea) && nrow(df_ipea)>0){
+  df_ipea2 <- df_ipea %>% pivot_wider(id_cols = date, names_from = code, values_from = value) %>% rename(date = date)
+  if('CAGED12_SALDON12' %in% names(df_ipea2)){
+    df_ipea2 <- df_ipea2 %>% arrange(date)
+    p4 <- ggplot(df_ipea2, aes(x = date, y = CAGED12_SALDON12)) + geom_line(color = '#6a2bd3') + theme_minimal() + labs(y='CAGED (saldo)', x='')
+    print(p4)
+    write_csv(df_ipea2, file = 'docs/data/ipeadata.csv')
+  }
+} else if(file.exists('docs/data/ipeadata.csv')){
+  df_ipea2 <- readr::read_csv('docs/data/ipeadata.csv', col_types = readr::cols())
+  df_ipea2 <- df_ipea2 %>% arrange(date)
+  if('CAGED12_SALDON12' %in% names(df_ipea2)){
+    p4 <- ggplot(df_ipea2, aes(x = date, y = CAGED12_SALDON12)) + geom_line(color = '#6a2bd3') + theme_minimal() + labs(y='CAGED (saldo)', x='')
+    print(p4)
+  }
+} else {
+  message('No IPEA data available')
+}
+```
+
+Download: [CSV IPEA sample](data/ipeadata.csv)
+
+## Internacional (World Bank exemplo)
+
+```{r wb-plot}
+wb <- tryCatch(WDI(country='BR', indicator='NY.GDP.MKTP.CD', start=2000, end=2024), error = function(e){ message('WDI error: ', e$message); NULL })
+if(!is.null(wb) && nrow(wb)>0){
+  wb2 <- wb %>% arrange(year) %>% mutate(date = as.character(year))
+  p5 <- ggplot(wb2, aes(x = as.integer(year), y = NY.GDP.MKTP.CD)) + geom_line(color='#d3b12b') + theme_minimal() + labs(y = 'PIB (USD)', x='')
+  print(p5)
+  write_csv(wb2, file = 'docs/data/wb_gdp_br.csv')
+} else if(file.exists('docs/data/wb_gdp_br.csv')){
+  wb2 <- readr::read_csv('docs/data/wb_gdp_br.csv', col_types = readr::cols())
+  p5 <- ggplot(wb2, aes(x = as.integer(date), y = NY.GDP.MKTP.CD)) + geom_line(color='#d3b12b') + theme_minimal() + labs(y = 'PIB (USD)', x='')
+  print(p5)
+} else {
+  message('No World Bank GDP data available')
+}
+```
+
+Download: [CSV WB GDP BR](data/wb_gdp_br.csv)
+
+## Dólar (BCB)
+
+```{r dolar-plot}
+if(file.exists('data/dolar.csv')){
+  df_dolar <- readr::read_csv('data/dolar.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+  p_d <- ggplot(df_dolar, aes(x = date, y = value)) + geom_line(color = '#d32f2f') + theme_minimal() + labs(y = 'Dólar (R$)', x = '')
+  print(p_d)
+  readr::write_csv(df_dolar, file = 'data/dolar.csv')
+} else {
+  message('No Dólar CSV available in data/dolar.csv')
+}
+```
+
+Download: [CSV Dólar](data/dolar.csv)
+
+## IBC-Br (BCB)
+
+```{r ibc-plot}
+if(file.exists('data/ibc_br.csv')){
+  df_ibc <- readr::read_csv('data/ibc_br.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+  p_ibc <- ggplot(df_ibc, aes(x = date, y = value)) + geom_line(color = '#2b7bd3') + theme_minimal() + labs(y = 'IBC-Br (índice)', x = '')
+  print(p_ibc)
+} else {
+  message('No IBC-Br CSV available in data/ibc_br.csv')
+}
+```
+
+Download: [CSV IBC-Br](data/ibc_br.csv)
+
+## Resultado Primário (BCB)
+
+```{r primario-plot}
+if(file.exists('data/resultado_primario.csv')){
+  df_res <- readr::read_csv('data/resultado_primario.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+  p_res <- ggplot(df_res, aes(x = date, y = value)) + geom_line(color = '#6a2bd3') + theme_minimal() + labs(y = 'Resultado Primário (R$)', x = '')
+  print(p_res)
+} else {
+  message('No Resultado Primário CSV available in data/resultado_primario.csv')
+}
+```
+
+Download: [CSV Resultado Primário](data/resultado_primario.csv)
+
+</article>
+---
+title: "Indicadores Macroeconômicos do Brasil"
+author: "Gerado automaticamente"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    theme: cerulean
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+dir.create("data", showWarnings = FALSE)
+```
+
+## Pacotes
+
+Instalar/carregar pacotes usados (execute antes de renderizar caso necessário):
+
+```{r packages}
+pkgs <- c(
+  "GetBCBData", "rbcb", "ipeadatar", "sidrar", "rdbnomics", "WDI",
+  "dplyr", "stringr", "tidyr", "magrittr", "tsibble", "ggplot2", "writexl", "lubridate"
+)
+missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+if(length(missing)){
+  message("Pacotes em falta: ", paste(missing, collapse = ", "), "\nInstale-os com install.packages() antes de renderizar.")
+}
+lapply(pkgs, function(p) suppressPackageStartupMessages(require(p, character.only = TRUE)))
+```
+
+---
+
+## Dados do BCB - SELIC e outras séries
+
+```{r bcb-data}
+dados_sgs <- tryCatch({
+  GetBCBData::gbcbd_get_series(
+    id = c("SELIC" = 432, "Dólar" = 3698, "IBC-Br" = 24363),
+    first.date = "2020-01-01",
+    last.date = Sys.Date(),
+    format.data = "wide"
+  )
+}, error = function(e) NULL)
+
+if(!is.null(dados_sgs)){
+  dados_sgs <- dados_sgs %>% tidyr::pivot_wider(id_cols = "ref.date", names_from = "series.name", values_from = "value")
+  head(dados_sgs)
+  # salvar para download
+  readr::write_csv(dados_sgs, "data/bcb_series.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(dados_sgs, "data/bcb_series.xlsx")
+}
+```
+
+### Gráfico: SELIC e IBC-Br
+
+```{r bcb-plot}
+if(!is.null(dados_sgs)){
+  library(ggplot2)
+  df <- dados_sgs %>% tidyr::pivot_longer(-ref.date, names_to = "serie", values_to = "valor")
+  ggplot(df, aes(x = ref.date, y = valor, color = serie)) +
+    geom_line() + theme_minimal() + labs(x = "Data", y = "Valor", title = "Séries do BCB")
+}
+```
+
+Download dos dados do BCB: [CSV](data/bcb_series.csv) | [XLSX](data/bcb_series.xlsx)
+
+---
+
+## Expectativas de mercado (Focus)
+
+```{r focus-data}
+dados_focus <- tryCatch({
+  rbcb::get_market_expectations(type = "annual", indic = "IPCA", start_date = "2020-01-01")
+}, error = function(e) NULL)
+
+if(!is.null(dados_focus)){
+  df_focus <- dados_focus %>%
+    dplyr::filter(baseCalculo == 0) %>%
+    dplyr::select(data = Data, data_ref = DataReferencia, mediana = Mediana) %>%
+    dplyr::group_by(data_ref, ano_mes = tsibble::yearmonth(data)) %>%
+    dplyr::summarise(expectativa_mensal = mean(mediana, na.rm = TRUE), .groups = "drop")
+
+  readr::write_csv(df_focus, "data/focus_ipca.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_focus, "data/focus_ipca.xlsx")
+}
+```
+
+```{r focus-plot}
+if(exists("df_focus")){
+  ggplot(df_focus, aes(x = ano_mes, y = expectativa_mensal)) + geom_line() + theme_minimal() + labs(title = "Expectativa IPCA (Focus)")
+}
+```
+
+Download: [CSV](data/focus_ipca.csv) | [XLSX](data/focus_ipca.xlsx)
+
+---
+
+## IPEADATA
+
+```{r ipeadata}
+series_ipeadata <- tryCatch(ipeadatar::available_series(), error = function(e) NULL)
+dados_ipeadata <- tryCatch(ipeadatar::ipeadata(c("caged" = "CAGED12_SALDON12", "embi_br" = "JPM366_EMBI366")), error = function(e) NULL)
+if(!is.null(dados_ipeadata)){
+  df_ipea <- dados_ipeadata %>% tidyr::pivot_wider(id_cols = "date", names_from = "code", values_from = "value") %>%
+    dplyr::rename(data = date)
+  readr::write_csv(df_ipea, "data/ipeadata.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_ipea, "data/ipeadata.xlsx")
+}
+```
+
+```{r ipeadata-plot}
+if(exists("df_ipea")){
+  df_plot <- df_ipea %>% tidyr::pivot_longer(-data, names_to = "serie", values_to = "valor")
+  ggplot(df_plot, aes(x = data, y = valor, color = serie)) + geom_line() + theme_minimal() + labs(title = "Séries IPEA")
+}
+```
+
+Download: [CSV](data/ipeadata.csv) | [XLSX](data/ipeadata.xlsx)
+
+---
+
+## Sidra / IPCA (IBGE)
+
+```{r sidra}
+cod_sidra <- "/t/7060/n1/all/v/63/p/all/c315/7169/d/v63%202"
+dados_sidra <- tryCatch(sidrar::get_sidra(api = cod_sidra), error = function(e) NULL)
+if(!is.null(dados_sidra)){
+  df_sidra <- dados_sidra %>% dplyr::mutate(data = lubridate::ym(`Mês (Código)`), ipca = Valor, .keep = "none")
+  readr::write_csv(df_sidra, "data/sidra_ipca.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_sidra, "data/sidra_ipca.xlsx")
+}
+```
+
+```{r sidra-plot}
+if(exists("df_sidra")){
+  ggplot(df_sidra, aes(x = data, y = ipca)) + geom_line() + theme_minimal() + labs(title = "IPCA (SIDRA)")
+}
+```
+
+Download: [CSV](data/sidra_ipca.csv) | [XLSX](data/sidra_ipca.xlsx)
+
+---
+
+## OECD / FMI / Banco Mundial (exemplos via DBnomics / WDI)
+
+```{r oecd-fmi-wb}
+# OECD: desemprego harmonizado (exemplo via dbnomics)
+cod_json_oecd <- paste0(
+  "https://api.db.nomics.world/v22/series/OECD/MEI?dimensions=%7B%22SUBJECT",
+  "%22%3A%5B%22LRHUTTTT%22%5D%2C%22MEASURE%22%3A%5B%22STSA%22%5D%2C%22FREQU",
+  "ENCY%22%3A%5B%22M%22%5D%7D&observations=1"
+)
+dados_ocde <- tryCatch(rdbnomics::rdb(api_link = cod_json_oecd), error = function(e) NULL)
+if(!is.null(dados_ocde)){
+  df_ocde <- dados_ocde %>% dplyr::select(data = period, pais = Country, valor = value)
+  readr::write_csv(df_ocde, "data/oecd_unemp.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_ocde, "data/oecd_unemp.xlsx")
+}
+
+# FMI example (REER index)
+cod_json_fmi <- paste0(
+  "https://api.db.nomics.world/v22/series/IMF/IFS?dimensions=%7B%22INDICATOR",
+  "%22%3A%5B%22EREER_IX%22%5D%2C%22REF_AREA%22%3A%5B%22AU%22%2C%22CA%22%2C%22CL%22%5D%2C%22FREQ%22%3A%5B%22M%22%5D%7D&observations=1"
+)
+dados_fmi <- tryCatch(rdbnomics::rdb(api_link = cod_json_fmi), error = function(e) NULL)
+if(!is.null(dados_fmi)){
+  df_fmi <- dados_fmi %>% tidyr::pivot_wider(id_cols = "period", names_from = "Reference Area", values_from = "value")
+  readr::write_csv(df_fmi, "data/fmi_reer.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_fmi, "data/fmi_reer.xlsx")
+}
+
+# Banco Mundial: exemplo de coleta WDI
+vars_cods <- tryCatch(WDI::WDIsearch(string = "cpi"), error = function(e) NULL)
+dados_wb <- tryCatch(WDI::WDI(country = c("BR"), indicator = c("FR.INR.RINR"), start = 2010, end = as.integer(format(Sys.Date(), "%Y"))), error = function(e) NULL)
+if(!is.null(dados_wb)){
+  readr::write_csv(dados_wb, "data/wb_example.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(dados_wb, "data/wb_example.xlsx")
+}
+```
+
+Download exemplos: [OECD CSV](data/oecd_unemp.csv) | [FMI CSV](data/fmi_reer.csv) | [WB CSV](data/wb_example.csv)
+
+---
+
+## Observações e próximos passos
+
+- Este `index.Rmd` é um ponto de partida. Alguns pontos para melhorar:
+  - Tornar downloads dinâmicos (por indicador) com Shiny.
+  - Adicionar tratamento de erros mais explícito e mensagens de fallback caso APIs falhem.
+  - Ajustar filtros de período e formatos (mensal, trimestral) conforme necessário.
+
+Renderize com `rmarkdown::render("index.Rmd")` ou usando o botão Knit no RStudio.
+

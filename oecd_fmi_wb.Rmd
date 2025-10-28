@@ -1,0 +1,56 @@
+---
+title: "OECD / FMI / World Bank — Exemplos"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+dir.create("data", showWarnings = FALSE)
+library(dplyr); library(tidyr); library(ggplot2)
+```
+
+## OECD — desemprego harmonizado (exemplo)
+
+```{r oecd}
+cod_json_oecd <- paste0(
+  "https://api.db.nomics.world/v22/series/OECD/MEI?dimensions=%7B%22SUBJECT",
+  "%22%3A%5B%22LRHUTTTT%22%5D%2C%22MEASURE%22%3A%5B%22STSA%22%5D%2C%22FREQU",
+  "ENCY%22%3A%5B%22M%22%5D%7D&observations=1"
+)
+dados_ocde <- tryCatch(rdbnomics::rdb(api_link = cod_json_oecd), error = function(e) NULL)
+if(!is.null(dados_ocde)){
+  df_ocde <- dados_ocde %>% dplyr::select(data = period, pais = Country, valor = value)
+  readr::write_csv(df_ocde, "data/oecd_unemp.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_ocde, "data/oecd_unemp.xlsx")
+  knitr::kable(head(df_ocde, 10))
+}
+```
+
+## FMI — REER (exemplo)
+
+```{r fmi}
+cod_json_fmi <- paste0(
+  "https://api.db.nomics.world/v22/series/IMF/IFS?dimensions=%7B%22INDICATOR",
+  "%22%3A%5B%22EREER_IX%22%5D%2C%22REF_AREA%22%3A%5B%22AU%22%2C%22CA%22%2C%22CL%22%5D%2C%22FREQ%22%3A%5B%22M%22%5D%7D&observations=1"
+)
+dados_fmi <- tryCatch(rdbnomics::rdb(api_link = cod_json_fmi), error = function(e) NULL)
+if(!is.null(dados_fmi)){
+  df_fmi <- dados_fmi %>% tidyr::pivot_wider(id_cols = "period", names_from = "Reference Area", values_from = "value")
+  readr::write_csv(df_fmi, "data/fmi_reer.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(df_fmi, "data/fmi_reer.xlsx")
+  knitr::kable(head(df_fmi, 10))
+}
+```
+
+## World Bank — exemplo WDI
+
+```{r wb}
+dados_wb <- tryCatch(WDI::WDI(country = c("BR"), indicator = c("FR.INR.RINR"), start = 2010, end = as.integer(format(Sys.Date(), "%Y"))), error = function(e) NULL)
+if(!is.null(dados_wb)){
+  readr::write_csv(dados_wb, "data/wb_example.csv")
+  if(requireNamespace("writexl", quietly = TRUE)) writexl::write_xlsx(dados_wb, "data/wb_example.xlsx")
+  knitr::kable(head(dados_wb, 10))
+}
+```
+
+Download: [OECD CSV](data/oecd_unemp.csv) | [FMI CSV](data/fmi_reer.csv) | [WB CSV](data/wb_example.csv)
