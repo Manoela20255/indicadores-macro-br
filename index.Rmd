@@ -130,6 +130,23 @@ if(!is.null(df_ipea) && nrow(df_ipea)>0){
 
 Download: [CSV IPEA sample](data/ipeadata.csv)
 
+## CAGED — saldo de empregos (IPEA)
+
+```{r caged-plot}
+if(file.exists('data/ipeadata.csv')){
+  df_ipea_all <- readr::read_csv('data/ipeadata.csv', col_types = readr::cols()) %>% mutate(data = as.Date(data)) %>% arrange(data)
+  if('CAGED12_SALDON12' %in% names(df_ipea_all)){
+    df_caged <- df_ipea_all %>% select(data, CAGED12_SALDON12) %>% rename(date = data, saldo = CAGED12_SALDON12)
+    p_caged <- ggplot(df_caged, aes(x = date, y = saldo)) + geom_line(color = '#6a2bd3') + theme_minimal() + labs(title = 'CAGED — saldo de empregos', y = 'Saldo', x = '')
+    print(p_caged)
+  } else message('CAGED series not present in data/ipeadata.csv')
+} else {
+  message('No IPEA CSV available for CAGED (data/ipeadata.csv)')
+}
+```
+
+Download: [CSV IPEA (CAGED)](data/ipeadata.csv)
+
 ## Internacional (World Bank exemplo)
 
 ```{r wb-plot}
@@ -150,16 +167,97 @@ if(!is.null(wb) && nrow(wb)>0){
 
 Download: [CSV WB GDP BR](data/wb_gdp_br.csv)
 
+## OECD — Unemployment (exemplo)
+
+```{r oecd-plot}
+df_oecd <- tryCatch({
+  if(file.exists('data/oecd_unemp.csv')){
+    readr::read_csv('data/oecd_unemp.csv', col_types = readr::cols()) %>% rename(date = period)
+  } else {
+    tmp <- rdbnomics::rdb(api_link = 'https://api.db.nomics.world/v22/series/OECD/MEI?dimensions=%7B%22SUBJECT%22%3A%5B%22LRHUTTTT%22%5D%2C%22MEASURE%22%3A%5B%22STSA%22%5D%2C%22FREQUENCY%22%3A%5B%22M%22%5D%7D&observations=1')
+    if(nrow(tmp)>0){
+      tmp2 <- tmp %>% dplyr::select(period, value) %>% rename(date = period)
+      readr::write_csv(tmp2, 'data/oecd_unemp.csv')
+      tmp2
+    } else NULL
+  }
+}, error = function(e){ message('OECD fetch error: ', e$message); NULL })
+
+if(!is.null(df_oecd) && nrow(df_oecd)>0){
+  df_oecd <- df_oecd %>% mutate(date = as.character(date))
+  print(ggplot(df_oecd, aes(x = as.Date(date), y = value)) + geom_line() + theme_minimal() + labs(title = 'OECD — Unemployment (sample)'))
+} else {
+  message('No OECD unemployment data available')
+}
+```
+
+Download: [CSV OECD Unemployment](data/oecd_unemp.csv)
+
+## IMF — exemplo via DBnomics (fallback disponível)
+
+```{r imf-plot}
+imf_fallback <- 'docs/data/imf_ca548bba661960ffb52c67efd4e14739.csv'
+df_imf <- tryCatch({
+  # try a canonical IMF series via DBnomics
+  tmp <- rdbnomics::rdb(api_link = 'https://api.db.nomics.world/v22/series/IMF/IFS?dimensions=%7B%22INDICATOR%22%3A%5B%22NGDP_R%22%5D%2C%22REF_AREA%22%3A%5B%22BRA%22%5D%7D')
+  if(nrow(tmp)>0){
+    tmp2 <- tmp %>% dplyr::select(period, value) %>% rename(date = period)
+    # persist to data if possible
+    try(readr::write_csv(tmp2, 'data/imf_example.csv'), silent = TRUE)
+    tmp2
+  } else NULL
+}, error = function(e){ message('IMF fetch error: ', e$message); NULL })
+
+if(is.null(df_imf) || nrow(df_imf)==0){
+  if(file.exists(imf_fallback)){
+    df_imf <- readr::read_csv(imf_fallback, col_types = readr::cols()) %>% rename(date = period)
+  }
+}
+
+if(!is.null(df_imf) && nrow(df_imf)>0){
+  df_imf <- df_imf %>% mutate(date = as.character(date))
+  print(ggplot(df_imf, aes(x = as.Date(date), y = value)) + geom_line() + theme_minimal() + labs(title = 'IMF — exemplo (fallback if needed)'))
+} else {
+  message('No IMF data available')
+}
+```
+
+Download: [CSV IMF exemplo](docs/data/imf_ca548bba661960ffb52c67efd4e14739.csv)
+
+---
+
+## Todos os dados (downloads)
+
+```{r data-index}
+files <- list.files('data', pattern = '\\.(csv|CSV)$', full.names = FALSE)
+if(length(files)==0) cat('Nenhum CSV disponível em data/\n') else {
+  df_files <- data.frame(file = files, link = paste0('data/', files), stringsAsFactors = FALSE)
+  knitr::kable(df_files, col.names = c('Arquivo', 'Link para download'))
+}
+```
+
 ## Dólar (BCB)
 
 ```{r dolar-plot}
-if(file.exists('data/dolar.csv')){
-  df_dolar <- readr::read_csv('data/dolar.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+## try API first, fallback to data/dolar.csv
+df_dolar <- tryCatch({
+  tmp <- GetBCBData::gbcbd_get_series(id = 3698, first.date = '2018-01-01', last.date = Sys.Date())
+  tmp <- tmp %>% rename(date = ref.date, value = value) %>% arrange(date)
+  # persist for downloads
+  readr::write_csv(tmp, 'data/dolar.csv')
+  tmp
+}, error = function(e){
+  message('BCB Dólar fetch failed: ', e$message)
+  if(file.exists('data/dolar.csv')){
+    readr::read_csv('data/dolar.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+  } else NULL
+})
+
+if(!is.null(df_dolar) && nrow(df_dolar)>0){
   p_d <- ggplot(df_dolar, aes(x = date, y = value)) + geom_line(color = '#d32f2f') + theme_minimal() + labs(y = 'Dólar (R$)', x = '')
   print(p_d)
-  readr::write_csv(df_dolar, file = 'data/dolar.csv')
 } else {
-  message('No Dólar CSV available in data/dolar.csv')
+  message('No Dólar data available')
 }
 ```
 
@@ -168,12 +266,24 @@ Download: [CSV Dólar](data/dolar.csv)
 ## IBC-Br (BCB)
 
 ```{r ibc-plot}
-if(file.exists('data/ibc_br.csv')){
-  df_ibc <- readr::read_csv('data/ibc_br.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+## try API first, fallback to data/ibc_br.csv
+df_ibc <- tryCatch({
+  tmp <- GetBCBData::gbcbd_get_series(id = 24363, first.date = '2018-01-01', last.date = Sys.Date())
+  tmp <- tmp %>% rename(date = ref.date, value = value) %>% arrange(date)
+  readr::write_csv(tmp, 'data/ibc_br.csv')
+  tmp
+}, error = function(e){
+  message('BCB IBC-Br fetch failed: ', e$message)
+  if(file.exists('data/ibc_br.csv')){
+    readr::read_csv('data/ibc_br.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+  } else NULL
+})
+
+if(!is.null(df_ibc) && nrow(df_ibc)>0){
   p_ibc <- ggplot(df_ibc, aes(x = date, y = value)) + geom_line(color = '#2b7bd3') + theme_minimal() + labs(y = 'IBC-Br (índice)', x = '')
   print(p_ibc)
 } else {
-  message('No IBC-Br CSV available in data/ibc_br.csv')
+  message('No IBC-Br data available')
 }
 ```
 
@@ -182,12 +292,24 @@ Download: [CSV IBC-Br](data/ibc_br.csv)
 ## Resultado Primário (BCB)
 
 ```{r primario-plot}
-if(file.exists('data/resultado_primario.csv')){
-  df_res <- readr::read_csv('data/resultado_primario.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+## try API first, fallback to data/resultado_primario.csv
+df_res <- tryCatch({
+  tmp <- GetBCBData::gbcbd_get_series(id = 5793, first.date = '2018-01-01', last.date = Sys.Date())
+  tmp <- tmp %>% rename(date = ref.date, value = value) %>% arrange(date)
+  readr::write_csv(tmp, 'data/resultado_primario.csv')
+  tmp
+}, error = function(e){
+  message('BCB Resultado Primário fetch failed: ', e$message)
+  if(file.exists('data/resultado_primario.csv')){
+    readr::read_csv('data/resultado_primario.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) %>% arrange(date)
+  } else NULL
+})
+
+if(!is.null(df_res) && nrow(df_res)>0){
   p_res <- ggplot(df_res, aes(x = date, y = value)) + geom_line(color = '#6a2bd3') + theme_minimal() + labs(y = 'Resultado Primário (R$)', x = '')
   print(p_res)
 } else {
-  message('No Resultado Primário CSV available in data/resultado_primario.csv')
+  message('No Resultado Primário data available')
 }
 ```
 

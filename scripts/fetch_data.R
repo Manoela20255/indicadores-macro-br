@@ -143,6 +143,95 @@ try({
   }
 }, silent = TRUE)
 
+# 7) INPC (SIDRA) - best-effort
+cat("Attempting SIDRA fetch for INPC...\n")
+try({
+  inpc_try <- tryCatch(sidrar::get_sidra(api = '/t/7060/n1/all/v/63/p/all'), error = function(e) NULL)
+  if(!is.null(inpc_try) && nrow(inpc_try)>0){
+    inpc_df <- inpc_try %>% mutate(date = lubridate::ym(`Mês (Código)`), inpc = Valor) %>% select(date, inpc) %>% arrange(date)
+    write.csv(inpc_df, file = 'data/inpc.csv', row.names = FALSE)
+    write.csv(inpc_df, file = 'static_site/data/inpc.csv', row.names = FALSE)
+    write.csv(inpc_df, file = 'docs/data/inpc.csv', row.names = FALSE)
+    js_lines <- c(js_lines, write_js_array('INPC_LABELS', format(inpc_df$date, '%Y-%m')), write_js_array('INPC_VALUES', inpc_df$inpc))
+  }
+}, silent = TRUE)
+
+# 8) IGP-M (attempt via rdbnomics/FGV)
+cat("Attempting rdbnomics fetch for IGP-M...\n")
+try({
+  igpm_try <- tryCatch(rdbnomics::rdb(api_link = 'https://api.db.nomics.world/v22/series/FGV/IGP-M?observations=1'), error = function(e) NULL)
+  if(!is.null(igpm_try) && nrow(igpm_try)>0){
+    igpm_df <- igpm_try %>% dplyr::select(period, value) %>% rename(date = period, igpm = value)
+    write.csv(igpm_df, file = 'data/igpm.csv', row.names = FALSE)
+    write.csv(igpm_df, file = 'static_site/data/igpm.csv', row.names = FALSE)
+    write.csv(igpm_df, file = 'docs/data/igpm.csv', row.names = FALSE)
+    js_lines <- c(js_lines, write_js_array('IGPM_LABELS', igpm_df$date), write_js_array('IGPM_VALUES', igpm_df$igpm))
+  }
+}, silent = TRUE)
+
+# 9) Produção Industrial (SIDRA) - best-effort
+cat("Attempting SIDRA fetch for Industrial Production...\n")
+try({
+  prod_try <- tryCatch(sidrar::get_sidra(api = '/t/2416/n1/all/v/63/p/all'), error = function(e) NULL)
+  if(!is.null(prod_try) && nrow(prod_try)>0){
+    prod_df <- prod_try %>% mutate(date = lubridate::ym(`Mês (Código)`), valor = Valor) %>% select(date, valor) %>% arrange(date)
+    write.csv(prod_df, file = 'data/industrial_prod.csv', row.names = FALSE)
+    write.csv(prod_df, file = 'static_site/data/industrial_prod.csv', row.names = FALSE)
+    write.csv(prod_df, file = 'docs/data/industrial_prod.csv', row.names = FALSE)
+    js_lines <- c(js_lines, write_js_array('INDPROD_LABELS', format(prod_df$date, '%Y-%m')), write_js_array('INDPROD_VALUES', prod_df$valor))
+  }
+}, silent = TRUE)
+
+# 10) Varejo (SIDRA) - best-effort
+cat("Attempting SIDRA fetch for Retail Sales...\n")
+try({
+  varejo_try <- tryCatch(sidrar::get_sidra(api = '/t/1419/n1/all/v/63/p/all'), error = function(e) NULL)
+  if(!is.null(varejo_try) && nrow(varejo_try)>0){
+    varejo_df <- varejo_try %>% mutate(date = lubridate::ym(`Mês (Código)`), valor = Valor) %>% select(date, valor) %>% arrange(date)
+    write.csv(varejo_df, file = 'data/varejo.csv', row.names = FALSE)
+    write.csv(varejo_df, file = 'static_site/data/varejo.csv', row.names = FALSE)
+    write.csv(varejo_df, file = 'docs/data/varejo.csv', row.names = FALSE)
+    js_lines <- c(js_lines, write_js_array('VAREJO_LABELS', format(varejo_df$date, '%Y-%m')), write_js_array('VAREJO_VALUES', varejo_df$valor))
+  }
+}, silent = TRUE)
+
+# 11) Reservas Internacionais & Balança (BCB) - best-effort (no guaranteed ids)
+cat("Attempting BCB fetch for Reserves and Trade balance (best-effort)...\n")
+try({
+  reserves_try <- tryCatch(GetBCBData::gbcbd_get_series(id = 22434, first.date = '2000-01-01', last.date = Sys.Date()), error = function(e) NULL)
+  if(!is.null(reserves_try) && nrow(reserves_try)>0){
+    res_df <- reserves_try %>% rename(date = ref.date, value = value) %>% arrange(date)
+    write.csv(res_df, file = 'data/reservas_internacionais.csv', row.names = FALSE)
+    write.csv(res_df, file = 'static_site/data/reservas_internacionais.csv', row.names = FALSE)
+    write.csv(res_df, file = 'docs/data/reservas_internacionais.csv', row.names = FALSE)
+    js_lines <- c(js_lines, write_js_array('RESERVAS_LABELS', format(res_df$date, '%Y-%m')), write_js_array('RESERVAS_VALUES', res_df$value))
+  }
+}, silent = TRUE)
+
+try({
+  balanca_try <- tryCatch(GetBCBData::gbcbd_get_series(id = 24364, first.date = '2000-01-01', last.date = Sys.Date()), error = function(e) NULL)
+  if(!is.null(balanca_try) && nrow(balanca_try)>0){
+    bal_df <- balanca_try %>% rename(date = ref.date, value = value) %>% arrange(date)
+    write.csv(bal_df, file = 'data/balanca_comercial.csv', row.names = FALSE)
+    write.csv(bal_df, file = 'static_site/data/balanca_comercial.csv', row.names = FALSE)
+    write.csv(bal_df, file = 'docs/data/balanca_comercial.csv', row.names = FALSE)
+    js_lines <- c(js_lines, write_js_array('BALANCA_LABELS', format(bal_df$date, '%Y-%m')), write_js_array('BALANCA_VALUES', bal_df$value))
+  }
+}, silent = TRUE)
+
+# 12) Desemprego (PNADC via SIDRA) - best-effort
+cat("Attempting SIDRA fetch for Unemployment (PNADC)...\n")
+try({
+  desemp_try <- tryCatch(sidrar::get_sidra(api = '/t/6579/n1/all/v/4093/p/all'), error = function(e) NULL)
+  if(!is.null(desemp_try) && nrow(desemp_try)>0){
+    desemp_df <- desemp_try %>% mutate(date = lubridate::ym(`Trimestre (Código)`), taxa = Valor) %>% select(date, taxa) %>% arrange(date)
+    write.csv(desemp_df, file = 'data/desemprego_pnadc.csv', row.names = FALSE)
+    write.csv(desemp_df, file = 'static_site/data/desemprego_pnadc.csv', row.names = FALSE)
+    write.csv(desemp_df, file = 'docs/data/desemprego_pnadc.csv', row.names = FALSE)
+    js_lines <- c(js_lines, write_js_array('DESEMP_LABELS', format(desemp_df$date, '%Y-%m')), write_js_array('DESEMP_VALUES', desemp_df$taxa))
+  }
+}, silent = TRUE)
+
 # Write JS data file if any lines
 if(length(js_lines) > 0){
   cat("Writing JS data to static_site/js/data.js\n")
