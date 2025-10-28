@@ -22,8 +22,18 @@ library(rdbnomics)
 library(readr)
 
 write_js_array <- function(name, vec){
+  # Safely convert an R vector to a JS array literal
+  if(is.null(vec) || length(vec) == 0) return(sprintf("window.%s = [];", name))
+  if(is.factor(vec)) vec <- as.character(vec)
+  if(inherits(vec, c("Date", "POSIXt"))) vec <- as.character(vec)
   if(is.character(vec)){
-    vals <- paste0("\'", vec, "\'", collapse = ",")
+    # escape single quotes
+    esc <- gsub("'", "\\\\'", vec)
+    vals <- paste0("'", esc, "'", collapse = ",")
+  } else if(is.numeric(vec) || is.integer(vec)){
+    # replace NA with null for JS
+    vec_num <- ifelse(is.na(vec), "null", as.character(vec))
+    vals <- paste0(vec_num, collapse = ",")
   } else {
     vals <- paste0(as.character(vec), collapse = ",")
   }
@@ -38,12 +48,20 @@ dados_sgs <- tryCatch(
   GetBCBData::gbcbd_get_series(id = 432, first.date = "2018-01-01", last.date = Sys.Date()),
   error = function(e) { message("BCB fetch error: ", e$message); NULL }
 )
-if(!is.null(dados_sgs)){
-  df <- dados_sgs %>% rename(date = ref.date, selic = value) %>% arrange(date)
-  write.csv(df, file = "data/selic.csv", row.names = FALSE)
-  write.csv(df, file = "static_site/data/selic.csv", row.names = FALSE)
-  write.csv(df, file = "docs/data/selic.csv", row.names = FALSE)
-  js_lines <- c(js_lines, write_js_array("SELIC_LABELS", format(df$date, "%Y-%m")), write_js_array("SELIC_VALUES", df$selic))
+if(!is.null(dados_sgs) && nrow(dados_sgs) > 0){
+  # Normalize columns safely
+  df <- tryCatch({
+    dados_sgs %>% rename(date = ref.date, selic = value) %>% arrange(date)
+  }, error = function(e){ message('Normalization error SELIC: ', e$message); NULL })
+  if(!is.null(df) && nrow(df) > 0){
+    write.csv(df, file = "data/selic.csv", row.names = FALSE)
+    write.csv(df, file = "static_site/data/selic.csv", row.names = FALSE)
+    write.csv(df, file = "docs/data/selic.csv", row.names = FALSE)
+    # safe formatting for labels
+    selic_labels <- if("date" %in% names(df)) format(as.Date(df$date), "%Y-%m") else seq_len(nrow(df))
+    selic_values <- if("selic" %in% names(df)) df$selic else df[[2]]
+    js_lines <- c(js_lines, write_js_array("SELIC_LABELS", selic_labels), write_js_array("SELIC_VALUES", selic_values))
+  }
 }
 
 # 1b) BCB - multiple series (Dólar, IBC-Br, Resultado Primário)

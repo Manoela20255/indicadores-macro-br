@@ -12,7 +12,7 @@ tryCatch({
 	render('index.Rmd', output_file = file.path('docs','index.html'), envir = new.env())
 	cat('Rendered docs/index.html and CSVs under docs/data\n')
 }, error = function(e){
-	cat('Render failed:', conditionMessage(e), '\n')
-	# leave existing docs/ content intact if present
-	quit(status = 0)
+  cat('Render failed:', conditionMessage(e), '\n')
+  # leave existing docs/ content intact if present but exit non-zero so CI shows failure
+  quit(status = 1)
 })
