@@ -41,6 +41,10 @@ jobs:
       - name: Render site
         run: Rscript scripts/render_site.R
 
+      - name: Publish to RPubs (optional)
+        if: ${{ secrets.RPUBS_ACCOUNT != '' && secrets.RPUBS_TOKEN != '' && secrets.RPUBS_SECRET != '' }}
+        run: Rscript scripts/publish_rpubs.R
+
       - name: Deploy to GitHub Pages (gh-pages)
         uses: peaceiris/actions-gh-pages@v3
         with:
