@@ -315,6 +315,133 @@ if(!is.null(df_res) && nrow(df_res)>0){
 
 Download: [CSV Resultado Primário](data/resultado_primario.csv)
 
+## INPC (SIDRA)
+
+```{r inpc-plot}
+df_inpc <- tryCatch({
+  if(file.exists('data/inpc.csv')) readr::read_csv('data/inpc.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) else {
+    tmp <- sidrar::get_sidra(api = '/t/7060/n1/all/v/63/p/all')
+    if(nrow(tmp)>0) tmp2 <- tmp %>% mutate(date = lubridate::ym(`Mês (Código)`), inpc = Valor) %>% select(date, inpc) %>% arrange(date) else NULL
+  }
+}, error = function(e){ message('INPC fetch error: ', e$message); NULL })
+
+if(!is.null(df_inpc) && nrow(df_inpc)>0){
+  print(ggplot(df_inpc, aes(x = date, y = inpc)) + geom_line(color = '#1f77b4') + theme_minimal() + labs(title = 'INPC (IBGE)', y = 'var (%)'))
+  try(readr::write_csv(df_inpc, 'docs/data/inpc.csv'), silent = TRUE)
+} else message('No INPC data available')
+```
+
+Download: [CSV INPC](data/inpc.csv)
+
+## IGP-M (FGV / rdbnomics)
+
+```{r igpm-plot}
+df_igpm <- tryCatch({
+  if(file.exists('data/igpm.csv')) readr::read_csv('data/igpm.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) else {
+    tmp <- tryCatch(rdbnomics::rdb(api_link = 'https://api.db.nomics.world/v22/series/FGV/IGP-M?observations=1000'), error = function(e) NULL)
+    if(!is.null(tmp) && nrow(tmp)>0) tmp %>% dplyr::select(period, value) %>% dplyr::rename(date = period, igpm = value) else NULL
+  }
+}, error = function(e){ message('IGP-M fetch error: ', e$message); NULL })
+
+if(!is.null(df_igpm) && nrow(df_igpm)>0){
+  df_igpm <- df_igpm %>% mutate(date = as.character(date))
+  print(ggplot(df_igpm, aes(x = as.Date(date), y = igpm)) + geom_line(color = '#9467bd') + theme_minimal() + labs(title = 'IGP-M (FGV)', y = 'var (%)'))
+  try(readr::write_csv(df_igpm, 'docs/data/igpm.csv'), silent = TRUE)
+} else message('No IGP-M data available')
+```
+
+Download: [CSV IGP-M](data/igpm.csv)
+
+## Produção Industrial (SIDRA)
+
+```{r indprod-plot}
+df_indprod <- tryCatch({
+  if(file.exists('data/industrial_prod.csv')) readr::read_csv('data/industrial_prod.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) else {
+    tmp <- sidrar::get_sidra(api = '/t/2416/n1/all/v/63/p/all')
+    if(nrow(tmp)>0) tmp2 <- tmp %>% mutate(date = lubridate::ym(`Mês (Código)`), valor = Valor) %>% select(date, valor) %>% arrange(date) else NULL
+  }
+}, error = function(e){ message('Industrial production fetch error: ', e$message); NULL })
+
+if(!is.null(df_indprod) && nrow(df_indprod)>0){
+  print(ggplot(df_indprod, aes(x = date, y = valor)) + geom_line(color = '#17becf') + theme_minimal() + labs(title = 'Produção Industrial (IBGE)', y = 'índice'))
+  try(readr::write_csv(df_indprod, 'docs/data/industrial_prod.csv'), silent = TRUE)
+} else message('No industrial production data available')
+```
+
+Download: [CSV Produção Industrial](data/industrial_prod.csv)
+
+## Varejo (SIDRA)
+
+```{r varejo-plot}
+df_varejo <- tryCatch({
+  if(file.exists('data/varejo.csv')) readr::read_csv('data/varejo.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) else {
+    tmp <- sidrar::get_sidra(api = '/t/1419/n1/all/v/63/p/all')
+    if(nrow(tmp)>0) tmp2 <- tmp %>% mutate(date = lubridate::ym(`Mês (Código)`), valor = Valor) %>% select(date, valor) %>% arrange(date) else NULL
+  }
+}, error = function(e){ message('Varejo fetch error: ', e$message); NULL })
+
+if(!is.null(df_varejo) && nrow(df_varejo)>0){
+  print(ggplot(df_varejo, aes(x = date, y = valor)) + geom_line(color = '#bcbd22') + theme_minimal() + labs(title = 'Varejo (IBGE)', y = 'índice'))
+  try(readr::write_csv(df_varejo, 'docs/data/varejo.csv'), silent = TRUE)
+} else message('No varejo data available')
+```
+
+Download: [CSV Varejo](data/varejo.csv)
+
+## Reservas Internacionais (BCB)
+
+```{r reservas-plot}
+df_reservas <- tryCatch({
+  if(file.exists('data/reservas_internacionais.csv')) readr::read_csv('data/reservas_internacionais.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) else {
+    tmp <- tryCatch(GetBCBData::gbcbd_get_series(id = 22434, first.date = '2000-01-01', last.date = Sys.Date()), error = function(e) NULL)
+    if(!is.null(tmp) && nrow(tmp)>0) tmp %>% rename(date = ref.date, value = value) else NULL
+  }
+}, error = function(e){ message('Reservas fetch error: ', e$message); NULL })
+
+if(!is.null(df_reservas) && nrow(df_reservas)>0){
+  print(ggplot(df_reservas, aes(x = date, y = value)) + geom_line(color = '#8c564b') + theme_minimal() + labs(title = 'Reservas Internacionais (BCB)', y = 'US$ milhões'))
+  try(readr::write_csv(df_reservas, 'docs/data/reservas_internacionais.csv'), silent = TRUE)
+} else message('No reservas data available')
+```
+
+Download: [CSV Reservas Internacionais](data/reservas_internacionais.csv)
+
+## Balança Comercial (BCB)
+
+```{r balanca-plot}
+df_balanca <- tryCatch({
+  if(file.exists('data/balanca_comercial.csv')) readr::read_csv('data/balanca_comercial.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) else {
+    tmp <- tryCatch(GetBCBData::gbcbd_get_series(id = 24364, first.date = '2000-01-01', last.date = Sys.Date()), error = function(e) NULL)
+    if(!is.null(tmp) && nrow(tmp)>0) tmp %>% rename(date = ref.date, value = value) else NULL
+  }
+}, error = function(e){ message('Balança fetch error: ', e$message); NULL })
+
+if(!is.null(df_balanca) && nrow(df_balanca)>0){
+  print(ggplot(df_balanca, aes(x = date, y = value)) + geom_line(color = '#e377c2') + theme_minimal() + labs(title = 'Balança Comercial (BCB)', y = 'US$ milhões'))
+  try(readr::write_csv(df_balanca, 'docs/data/balanca_comercial.csv'), silent = TRUE)
+} else message('No balanca data available')
+```
+
+Download: [CSV Balança Comercial](data/balanca_comercial.csv)
+
+## Desemprego (PNADC)
+
+```{r desemprego-plot}
+df_desemp <- tryCatch({
+  if(file.exists('data/desemprego_pnadc.csv')) readr::read_csv('data/desemprego_pnadc.csv', col_types = readr::cols()) %>% mutate(date = as.Date(date)) else {
+    tmp <- tryCatch(sidrar::get_sidra(api = '/t/6579/n1/all/v/4093/p/all'), error = function(e) NULL)
+    if(!is.null(tmp) && nrow(tmp)>0) tmp2 <- tmp %>% mutate(date = lubridate::ym(`Trimestre (Código)`), taxa = Valor) %>% select(date, taxa) %>% arrange(date) else NULL
+  }
+}, error = function(e){ message('Desemprego fetch error: ', e$message); NULL })
+
+if(!is.null(df_desemp) && nrow(df_desemp)>0){
+  print(ggplot(df_desemp, aes(x = date, y = taxa)) + geom_line(color = '#7f7f7f') + theme_minimal() + labs(title = 'Desemprego (PNADC)', y = '%'))
+  try(readr::write_csv(df_desemp, 'docs/data/desemprego_pnadc.csv'), silent = TRUE)
+} else message('No desemprego data available')
+```
+
+Download: [CSV Desemprego PNADC](data/desemprego_pnadc.csv)
+
 </article>
 ---
 title: "Indicadores Macroeconômicos do Brasil"
